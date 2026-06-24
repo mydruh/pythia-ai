@@ -371,11 +371,22 @@ class TradingCycle:
                 )
                 continue
 
+            # Для Kelly-сайзинга: вероятность выигрыша ПОКУПАЕМОГО токена и цена
+            # контракта (зависят от направления). В режиме "fixed" не используются.
+            #   BUY_YES → покупаем анализируемый токен: win=my_prob, price=его цена.
+            #   BUY_NO  → покупаем противоположный: win=1−my_prob, price=1−цена.
+            if result.verdict == "BUY_YES":
+                win_prob, price = result.prob, prob
+            else:
+                win_prob, price = 1.0 - result.prob, 1.0 - prob
+
             decision = risk.approve(
                 bankroll=ts.balance,
                 current_exposure=exposure,
                 edge=edge,
                 market_volume=market.volume,
+                win_prob=win_prob,
+                price=price,
             )
             if not decision.allowed:
                 logger.info("session=%d risk deny '%s': %s", ts.id, market.question[:40], decision.reason)
