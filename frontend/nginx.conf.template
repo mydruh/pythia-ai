@@ -1,0 +1,15 @@
+server {
+    # $PORT подставит envsubst из переменной окружения (Railway задаёт PORT).
+    listen       ${PORT};
+    server_name  _;
+
+    root   /usr/share/nginx/html;
+    index  index.html;
+
+    # SPA-фоллбэк: любой путь, которого нет на диске, отдаём index.html
+    # (роутинг на стороне React). $uri — это nginx-переменная, не env, её
+    # envsubst НЕ трогает (подставляются только реальные имена env-переменных).
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

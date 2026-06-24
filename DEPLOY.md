@@ -82,6 +82,25 @@ Telegram ──/start──▶ bot (Railway worker) ──┐
 4. Deploy → получишь `https://pythia.<...>.vercel.app`.
 5. Впиши этот URL в `WEBAPP_URL` Telegram-сервиса (шаг 2.3) и передеплой бота.
 
+### Альтернатива: фронтенд на Railway (вместо Vercel)
+
+Фронт можно держать на Railway рядом с бэком — он раздаётся через Dockerfile
+(`frontend/Dockerfile`: сборка Vite → отдача статики nginx, SPA-фоллбэк, слушает `$PORT`).
+1. **New → GitHub Repo** (тот же репо) → ещё один сервис.
+2. **Settings → Root Directory** = `frontend` (Railway возьмёт `frontend/Dockerfile`).
+3. **Variables** (важно — Vite впекает их на ЭТАПЕ СБОРКИ, Railway пробрасывает их как
+   build-args, имена совпадают с `ARG` в Dockerfile):
+   | Переменная | Значение |
+   |---|---|
+   | `VITE_API_URL` | публичный URL бэкенда |
+   | `VITE_ALLOW_BROWSER` | `false` |
+4. **Settings → Networking → Generate Domain** → публичный `https://…up.railway.app`.
+5. Этот URL → в `WEBAPP_URL` Telegram-сервиса и в BotFather menu button.
+
+> Если меняешь зависимости — генерируй `package-lock.json` на том же npm, что и деплой
+> (npm 10/linux), иначе возможна ошибка `Invalid Version:` при сборке. Проще:
+> `docker run --rm -v "$PWD":/app -w /app node:22-alpine npm install`.
+
 ---
 
 ## 4. Привязка Mini App в BotFather
