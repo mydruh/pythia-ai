@@ -543,14 +543,10 @@ def _user_dict(user: User) -> dict:
 
 def _block_reason(a: Analysis, market: Market | None, has_position: bool) -> str | None:
     """Почему BUY-сигнал НЕ открыл позицию. Реконструкция ПЕРВОГО сработавшего гейта
-    в том же порядке, что и scheduler: убеждённость → edge → объём → лимиты.
+    в том же порядке, что и scheduler: edge → объём → лимиты.
     None — если позиция открылась или вердикт NEUTRAL (модель сама отказалась)."""
     if a.verdict.value == "NEUTRAL" or has_position:
         return None
-    if abs(a.my_prob - 0.5) < settings.risk_min_conviction:
-        lo, hi = 0.5 - settings.risk_min_conviction, 0.5 + settings.risk_min_conviction
-        return (f"Модель не уверена: её оценка {a.my_prob:.0%} близка к 50% "
-                f"(для входа нужно ≤{lo:.0%} или ≥{hi:.0%})")
     if abs(a.edge) < settings.risk_min_edge:
         return f"Edge {a.edge:+.1%} меньше порога ±{settings.risk_min_edge:.0%}"
     if market is not None and market.volume is not None and market.volume < settings.risk_min_volume:
