@@ -105,11 +105,17 @@ export interface Analysis {
   edge: number
   verdict: 'BUY_YES' | 'BUY_NO' | 'NEUTRAL'
   has_position: boolean
+  block_reason: string | null    // почему BUY-сигнал не открыл позицию (null если вошёл/NEUTRAL)
   reasoning: string
   created_at: string
   market_question: string | null
   market_url: string | null
   token_outcome: string | null
+}
+
+export interface CycleInfo {
+  next_cycle_at: string | null
+  interval_minutes: number
 }
 
 export interface PnlPoint {
@@ -175,7 +181,9 @@ export const api = {
   botStats: (uid: number, sid: number) => req<Bot>(`/users/${uid}/sessions/${sid}`),
   botPositions: (uid: number, sid: number, status?: string) =>
     req<Position[]>(`/users/${uid}/sessions/${sid}/positions${status ? `?status=${status}` : ''}`),
-  botAnalyses: (uid: number, sid: number) => req<Analysis[]>(`/users/${uid}/sessions/${sid}/analyses`),
+  botAnalyses: (uid: number, sid: number, offset = 0, limit = 20) =>
+    reqWithTotal<Analysis[]>(`/users/${uid}/sessions/${sid}/analyses?limit=${limit}&offset=${offset}`),
+  cycleNext: () => req<CycleInfo>(`/cycle/next`),
   botPnl: (uid: number, sid: number) => req<PnlPoint[]>(`/users/${uid}/sessions/${sid}/pnl_history`),
   pauseBot: (uid: number, sid: number) => post<Bot>(`/users/${uid}/sessions/${sid}/pause`, {}),
   resumeBot: (uid: number, sid: number) => post<Bot>(`/users/${uid}/sessions/${sid}/resume`, {}),

@@ -116,6 +116,21 @@ async def run_cycle_now() -> dict:
     return {"status": "done"}
 
 
+@app.get("/cycle/next")
+async def cycle_next() -> dict:
+    """Время следующего планового торгового цикла (для таймера в UI).
+    Считаем от последнего запуска (AppState) + интервал; если данных нет — null."""
+    async with async_session_factory() as session:
+        state = await session.get(AppState, "last_cycle_at")
+    next_at = None
+    if state and state.value:
+        next_at = datetime.fromisoformat(state.value) + timedelta(minutes=settings.cycle_interval_minutes)
+    return {
+        "next_cycle_at": next_at.isoformat() if next_at else None,
+        "interval_minutes": settings.cycle_interval_minutes,
+    }
+
+
 # ── wallet (user) ────────────────────────────────────────────────
 
 class StartWalletRequest(BaseModel):
@@ -316,12 +331,18 @@ async def session_positions(
 
 @app.get("/users/{telegram_id}/sessions/{session_id}/analyses")
 async def session_analyses(
-    telegram_id: int, session_id: int, limit: int = 50, _auth: int = Depends(require_user)
+    telegram_id: int, session_id: int, response: Response,
+    limit: int = 20, offset: int = 0, _auth: int = Depends(require_user)
 ) -> list[dict]:
-    """Что бот рассматривает/рассматривал. verdict=NEUTRAL — «рассматривает, но не вошёл»."""
+    """Что бот рассматривает/рассматривал. Пагинация (limit/offset) + X-Total-Count
+    для ленивой подгрузки старых записей. verdict=NEUTRAL — «рассмотрел, но не вошёл»."""
     async with async_session_factory() as session:
         user = await _get_user_or_404(session, telegram_id)
         ts = await _get_session_or_404(session, user, session_id)
+        total = await session.scalar(
+            select(func.count()).select_from(Analysis).where(Analysis.session_id == ts.id)
+        )
+        response.headers["X-Total-Count"] = str(int(total or 0))
         rows = await session.execute(
             select(Analysis, Market, MarketToken)
             .join(Market, Market.id == Analysis.market_id)
@@ -329,6 +350,7 @@ async def session_analyses(
             .where(Analysis.session_id == ts.id)
             .order_by(desc(Analysis.created_at))
             .limit(limit)
+            .offset(offset)
         )
         analyses = rows.all()
         # Рынки, по которым реально открылась позиция в этой сессии.
@@ -519,6 +541,23 @@ def _user_dict(user: User) -> dict:
     }
 
 
+def _block_reason(a: Analysis, market: Market | None, has_position: bool) -> str | None:
+    """Почему BUY-сигнал НЕ открыл позицию. Реконструкция ПЕРВОГО сработавшего гейта
+    в том же порядке, что и scheduler: убеждённость → edge → объём → лимиты.
+    None — если позиция открылась или вердикт NEUTRAL (модель сама отказалась)."""
+    if a.verdict.value == "NEUTRAL" or has_position:
+        return None
+    if abs(a.my_prob - 0.5) < settings.risk_min_conviction:
+        lo, hi = 0.5 - settings.risk_min_conviction, 0.5 + settings.risk_min_conviction
+        return (f"Модель не уверена: её оценка {a.my_prob:.0%} близка к 50% "
+                f"(для входа нужно ≤{lo:.0%} или ≥{hi:.0%})")
+    if abs(a.edge) < settings.risk_min_edge:
+        return f"Edge {a.edge:+.1%} меньше порога ±{settings.risk_min_edge:.0%}"
+    if market is not None and market.volume is not None and market.volume < settings.risk_min_volume:
+        return f"Объём рынка ниже порога {settings.risk_min_volume:.0f} USDC"
+    return "Лимит риска: экспозиция бота или число ставок на это событие"
+
+
 def _analysis_dict(
     a: Analysis,
     market: Market | None = None,
@@ -535,6 +574,7 @@ def _analysis_dict(
         "edge": round(a.edge, 4),
         "verdict": a.verdict.value,
         "has_position": has_position,
+        "block_reason": _block_reason(a, market, has_position),
         "reasoning": a.reasoning,
         "created_at": a.created_at.isoformat(),
         "market_question": market.question if market else None,
