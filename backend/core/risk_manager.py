@@ -19,6 +19,9 @@ class RiskDecision:
 
 class DrawdownHalt(Exception):
     """Бот достиг лимита просадки и должен остановиться, позвав человека."""
+    def __init__(self, msg: str, equity: float = 0.0) -> None:
+        super().__init__(msg)
+        self.equity = equity
 
 
 class RiskManager:
@@ -33,7 +36,8 @@ class RiskManager:
             raise DrawdownHalt(
                 f"Просадка достигла лимита: equity={current_equity:.2f} "
                 f"<= {threshold:.2f} (-{settings.risk_max_drawdown_pct:.0%}). "
-                f"Бот остановлен, требуется вмешательство человека."
+                f"Бот остановлен, требуется вмешательство человека.",
+                equity=current_equity,
             )
 
     # ── размер позиции ──────────────────────────────────────────
@@ -54,7 +58,11 @@ class RiskManager:
         от f*. Размер НИКОГДА не превышает фикс-потолок risk_max_position_pct —
         Келли может только уменьшить ставку (защита от переразмера на неточных оценках).
         """
-        fixed = bankroll * settings.risk_max_position_pct
+        # Базируемся на СТАРТОВОМ банке, чтобы размер позиции не уменьшался
+        # по мере роста экспозиции (иначе первый бет $5, десятый уже $2.50).
+        # Дополнительный cap по текущему свободному балансу — не инвестируем
+        # больше, чем есть на руках.
+        fixed = min(self.starting_bankroll * settings.risk_max_position_pct, bankroll)
         if settings.sizing_mode != "kelly":
             return fixed
         # Нет данных для Келли или вырожденная цена — безопасный фолбэк на фикс-процент.
@@ -91,7 +99,10 @@ class RiskManager:
         if size <= 0:
             return RiskDecision(False, 0.0, "размер по сайзингу = 0 (нет перевеса для Kelly)")
 
-        max_exposure = bankroll * settings.risk_max_exposure_pct
+        # Лимит экспозиции — от СТАРТОВОГО банка (фиксированная планка),
+        # иначе по мере роста exposure planка сдвигается вниз и бот блокирует
+        # себя раньше целевого процента.
+        max_exposure = self.starting_bankroll * settings.risk_max_exposure_pct
         room = max_exposure - current_exposure
         if room <= 0:
             return RiskDecision(False, 0.0, "достигнут лимит суммарной экспозиции")
