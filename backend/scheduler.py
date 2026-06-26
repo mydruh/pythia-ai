@@ -126,9 +126,9 @@ class TradingCycle:
                                 market_obj = await session.get(Market, pos.market_id)
                                 pnl = pos.pnl or 0.0
                                 notify(sl_user.telegram_id,
-                                    f"🔴 *Стоп-лосс сработал*\n"
+                                    f"🔴 Стоп-лосс сработал\n"
                                     f"{(market_obj.question[:60] if market_obj else '—')}\n\n"
-                                    f"P&L: *-${abs(pnl):.2f}* "
+                                    f"P&L: -${abs(pnl):.2f} "
                                     f"(-{settings.early_exit_stop_loss_pct:.0%} от ставки)"
                                 )
 
@@ -198,10 +198,9 @@ class TradingCycle:
                                 user = await session.get(User, ts.user_id)
                                 if user:
                                     notify(user.telegram_id,
-                                        f"▶️ *Бот возобновлён*\n"
-                                        f"_{ts.name or 'Бот'}_\n\n"
+                                        f"▶️ Бот возобновлён — {ts.name or 'Бот'}\n\n"
                                         f"Открытые ставки отыгрались и вернули капитал выше порога.\n"
-                                        f"Equity: *${equity:.2f}* (порог: ${threshold:.2f})\n\n"
+                                        f"Equity: ${equity:.2f} (порог: ${threshold:.2f})\n\n"
                                         f"Бот снова ищет новые лоты."
                                     )
                         except Exception:
@@ -258,10 +257,10 @@ class TradingCycle:
                     user = await session.get(User, ts.user_id)
                     if user:
                         notify(user.telegram_id,
-                            f"⏸ *Бот на паузе — просадка*\n"
-                            f"_{ts.name or 'Бот'}_\n\n"
-                            f"Потери достигли *-{settings.risk_max_drawdown_pct:.0%}* от стартового капитала.\n"
-                            f"Equity: *${e.equity:.2f}* (старт: ${ts.starting_balance:.2f})\n\n"
+                            f"⏸ Бот на паузе — просадка\n"
+                            f"{ts.name or 'Бот'}\n\n"
+                            f"Потери достигли -{settings.risk_max_drawdown_pct:.0%} от стартового капитала.\n"
+                            f"Equity: ${e.equity:.2f} (старт: ${ts.starting_balance:.2f})\n\n"
                             f"Когда открытые позиции отыграются — бот возобновится автоматически."
                         )
                 except Exception:
@@ -314,9 +313,8 @@ class TradingCycle:
                 pct = realized / ts.starting_balance * 100 if ts.starting_balance else 0.0
                 pnl_str = f"+${realized:.2f}" if realized >= 0 else f"-${abs(realized):.2f}"
                 notify(tid,
-                    f"🏁 *Бот завершил работу*\n"
-                    f"_{ts.name or 'Бот'}_\n\n"
-                    f"Итоговый P&L: *{pnl_str}* ({pct:+.1f}%)\n"
+                    f"🏁 Бот завершил работу — {ts.name or 'Бот'}\n\n"
+                    f"Итоговый P&L: {pnl_str} ({pct:+.1f}%)\n"
                     f"Капитал возвращён в кошелёк."
                 )
             else:
@@ -552,9 +550,9 @@ class TradingCycle:
                                else side)
                 direction = "НА" if result.verdict == "BUY_YES" else "ПРОТИВ"
                 notify(tid,
-                    f"🟢 *Новая ставка*\n"
+                    f"🟢 Новая ставка\n"
                     f"{market.question[:60]}\n\n"
-                    f"ставка {direction} «{outcome_str}» · *${decision.size_usdc:.2f}*\n"
+                    f"ставка {direction} «{outcome_str}» · ${decision.size_usdc:.2f}\n"
                     f"Рынок: {market_prob*100:.0f}% · Модель: {result.prob*100:.0f}% · Edge: {edge:+.1%}"
                 )
 
@@ -940,9 +938,9 @@ async def _settle_resolved_positions(
         emoji = "✅" if token_won else "❌"
         result_word = "Выиграл!" if token_won else "Проиграл"
         notify(telegram_id,
-            f"{emoji} *{result_word}*\n"
+            f"{emoji} {result_word}\n"
             f"{market.question[:60]}\n\n"
-            f"P&L: *{pnl_str}*"
+            f"P&L: {pnl_str}"
         )
 
 

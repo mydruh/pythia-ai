@@ -31,7 +31,9 @@ async def _send(telegram_id: int, text: str) -> None:
     if bot is None:
         return
     try:
-        await bot.send_message(chat_id=telegram_id, text=text, parse_mode="Markdown")
+        # parse_mode=None — plain text, чтобы спецсимволы в вопросах лотов
+        # (_, (, ., *) не ломали парсер и сообщение доходило в любом случае.
+        await bot.send_message(chat_id=telegram_id, text=text, parse_mode=None)
     except Exception:
         logger.warning("Не удалось отправить уведомление telegram_id=%d", telegram_id, exc_info=True)
 
