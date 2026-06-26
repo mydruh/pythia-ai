@@ -60,7 +60,7 @@ export default function BotDetail({ sid, onBack }: { sid: number; onBack: () => 
         <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>
           {catLabel(bot.category)}{bot.sim_end ? ` · до ${fmtDateTime(bot.sim_end)}` : ''}
         </div>
-        {!terminal && <NextCycleTimer />}
+        {bot.status === 'active' && <NextCycleTimer />}
       </div>
 
       {/* Метрики бюджета */}

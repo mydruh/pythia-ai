@@ -79,7 +79,7 @@ export function Badge({ children, color }: { children: ReactNode; color: string 
 export const STATUS_META: Record<string, [string, string]> = {
   active: ['🟢 Активна', '#22c55e'],
   paused: ['⏸ Пауза', '#eab308'],
-  settling: ['⌛ Ожидание результатов', '#38bdf8'],
+  settling: ['⌛ В ожидании', '#38bdf8'],
   completed: ['✅ Завершена', '#6366f1'],
   stopped: ['⏹ Остановлена', '#94a3b8'],
 }
