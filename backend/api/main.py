@@ -116,6 +116,17 @@ async def run_cycle_now() -> dict:
     return {"status": "done"}
 
 
+@app.post("/notify/test")
+async def notify_test(telegram_id: int) -> dict:
+    """Диагностика уведомлений: синхронно шлёт тестовое сообщение и возвращает
+    результат (есть ли токен, доставлено ли). Без fire-and-forget, чтобы увидеть ошибку."""
+    from core.notifier import _send
+    if not settings.telegram_bot_token:
+        return {"ok": False, "reason": "TELEGRAM_BOT_TOKEN не задан в переменных бэкенда"}
+    await _send(telegram_id, "✅ Тест уведомлений Pythia — доставка работает.")
+    return {"ok": True, "sent_to": telegram_id, "note": "если сообщение не пришло — смотри логи бэкенда"}
+
+
 @app.get("/cycle/next")
 async def cycle_next() -> dict:
     """Время следующего планового торгового цикла (для таймера в UI).
