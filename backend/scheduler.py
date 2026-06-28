@@ -553,7 +553,7 @@ class TradingCycle:
                     f"🟢 Новая ставка\n"
                     f"{market.question[:60]}\n\n"
                     f"ставка {direction} «{outcome_str}» · ${decision.size_usdc:.2f}\n"
-                    f"Рынок: {market_prob*100:.0f}% · Модель: {result.prob*100:.0f}% · Edge: {edge:+.1%}"
+                    f"Рынок: {prob*100:.0f}% · Модель: {result.prob*100:.0f}% · Edge: {edge:+.1%}"
                 )
 
         # Обновить current_price открытых позиций.
