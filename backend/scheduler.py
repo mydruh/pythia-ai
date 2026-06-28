@@ -388,6 +388,10 @@ class TradingCycle:
         for market, token in candidates:
             if token.last_price is None:
                 continue
+            # Новелти-шум (что скажет комментатор, счётчики твитов и т.п.) — у модели
+            # на таких рынках нет edge. Отсекаем до LLM-вызова (экономим токены).
+            if _is_blacklisted(market.question):
+                continue
             # Один токен на рынок: если Yes уже прошёл фильтр, No пропускаем (и наоборот).
             # Это предотвращает хедж YES+NO одного рынка внутри одного цикла.
             if market.id in seen_market_ids:
@@ -738,6 +742,16 @@ async def _session_exposure(session: AsyncSession, session_id: int) -> float:
         .where(Position.session_id == session_id, Position.status == PositionStatus.open)
     )
     return float(total or 0.0)
+
+
+def _is_blacklisted(question: str | None) -> bool:
+    """Рынок попадает под чёрный список типов (новелти-шум), если его вопрос
+    содержит любой паттерн из settings.market_blacklist_patterns. Такие рынки
+    не берём в анализ — у модели на них нет edge (см. разбор бота 3)."""
+    if not question:
+        return False
+    q = question.lower()
+    return any(p.lower() in q for p in settings.market_blacklist_patterns)
 
 
 def _event_key(description: str | None) -> str | None:
